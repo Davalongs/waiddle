@@ -1,0 +1,9 @@
+name = "openai_api_revproxy"
+main = "src/index.ts"
+
+account_id = "81fc651276da55b00dc9d20bb254f548"
+workers_dev = true
+compatibility_date = "2023-04-25"
+kv_namespaces = [
+  { binding = "OIA_PROXY", id = "8b995b004fb64e04b05759e2c408f58b" }
+]
