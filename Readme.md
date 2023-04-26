@@ -1,5 +1,44 @@
 # OpenAI API Usage
 
+## Standard OpenAPI Chat Completion
+
+Making a POST request to OpenAI API /chat/completion endpoint with the following body:
+
+{
+  "model": "gpt-3.5-turbo",
+  "messages": [{"role": "Owner", "content": "What is 2+2?"}]
+}
+
+Will give a response containing the completed chat message(s) based on the provided input. The response will have a JSON format and will include the generated text(s) based on the provided input. 
+The structure of the response will include a choices array containing one or more objects with the generated text and some additional metadata.
+
+Note that giving the "Authorization" header with the OpenAI API Token is required.
+
+Here's an example response structure:
+
+``` json
+{
+  "choices": [
+    {
+      "text": " The result of 2+2 is 4.",
+      "index": 0,
+      "logprobs": null,
+      "finish_reason": "stop"
+    }
+  ],
+  "created": 1630632696,
+  "model": "text-davinci-002",
+  "id": "cmpl-abc123"
+}
+```
+
+The exact content of the generated text will depend on the model and parameters used in the request.
+
+## Errors
+
+* **Status Code 429**: If too many requests are made in a time lapse, last known number was around 50 in less than 1 hour, the API will give a 429 error response
+* **Status Code 400**: If the required parameters are not properly forwarded through the proxy the API will give an error for the missing ones.
+
 ## API common parameters
 
 There are some parameters needed to compose a proper request to the OpenAPI API
