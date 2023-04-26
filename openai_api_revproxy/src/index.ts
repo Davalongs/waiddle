@@ -12,8 +12,6 @@ addEventListener("fetch", (event) => {
     const proxiedHeaders = {Authorization: openAIToken, "Content-Type": "application/json"};
     const proxiedBody = await request.text();
 
-    console.log(proxiedHeaders)
-
     const proxiedRequest = new Request(proxyUrl, {
       method: proxiedMethod,
       headers: proxiedHeaders,
