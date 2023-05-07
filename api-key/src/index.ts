@@ -24,6 +24,9 @@ export interface Env {
 
 const superSecret = "PetricorTruman"
 
+// TODO: Initialize a random iv for each encryption operation and store it to reuse it in the decrypt operation.
+const fixedIV: Uint8Array = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+
 export default {
 	async fetch(
 		request: Request,
@@ -44,36 +47,52 @@ async function encryptAPIKey(request: Request, env: Env, ctx: ExecutionContext):
 
 	if (!reqBody.token) return new Response("Token not found in payload", { status: 400 })
 
-	let encryptedToken
+	let encryptedToken: string
 	try {
 		encryptedToken = await encryptToken(reqBody.token)
 	} catch (e) {
 		return new Response(`Unable to encrypt token due to: ${e}`, { status: 500 })
 	}
 	
-	return new Response(JSON.stringify(encryptedToken));
+	return new Response(JSON.stringify({key: encryptedToken}));
 }
 
 async function encryptToken(token: string): Promise<string> {
 	const text = new TextEncoder().encode(token);
 
 	const key = await getCryptoKey();
+	const iv = fixedIV
 
-	const digest = await crypto.subtle.encrypt("SHA-256", key, text);
+	const encryptedData = await crypto.subtle.encrypt(
+		{ name: "AES-GCM", iv: iv },
+		key,
+		text
+	);
 
-	return new TextDecoder("utf-8").decode(digest);
+	const encryptedArrayBuffer = new Uint8Array(encryptedData);
+	const combinedIvAndData = new Uint8Array(iv.length + encryptedArrayBuffer.length);
+	combinedIvAndData.set(iv);
+	combinedIvAndData.set(encryptedArrayBuffer, iv.length);
 
+	return btoa(String.fromCharCode(...combinedIvAndData));
+	// We can't use the Buffer class inside a cloudflare worker, so we need to
+	// use the deprecated legacy btoa function. When possible, do this:
+	// return Buffer.from(combinedIvAndData).toString('base64');
 }
 
 async function getCryptoKey(): Promise<CryptoKey> {
-
 	const encoder = new TextEncoder();
-    const secretKeyData = encoder.encode(superSecret);
+	const secretKeyData = encoder.encode(superSecret);
+
+	// Hash the secretKeyData using SHA-256
+	const hashedSecret = await crypto.subtle.digest("SHA-256", secretKeyData);
+
+	// Import the hashed key for AES-GCM
 	return crypto.subtle.importKey(
 		"raw",
-		secretKeyData,
-		{ name: "HMAC", hash: "SHA-256" },
+		hashedSecret,
+		{ name: "AES-GCM" },
 		false,
-		["verify"]
-	  );
+		["encrypt", "decrypt"]
+	);
 }
