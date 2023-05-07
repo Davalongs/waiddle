@@ -1,85 +1,53 @@
-import { unstable_dev } from "wrangler";
-import type { UnstableDevWorker } from "wrangler";
-import { describe, expect, it, beforeAll, afterAll } from "vitest";
+import { describe, expect, it, beforeAll, afterAll, Mock, vi } from "vitest";
 
-describe("Worker", () => {
-  let worker: UnstableDevWorker;
+// Mock the R2 library
+const mockR2 = Mock("put", "getToken");
 
-  beforeAll(async () => {
-    worker = await unstable_dev("src/index.ts", {
-      experimental: { disableExperimentalWarning: true },
-    });
-  });
+// Test the proxy
+describe("proxy", () => {
+	beforeAll(() => {
+		// Mock the R2 library's getToken method to return a dummy token
+		mockR2.getToken.mockImplementation(async () => "dummy-token");
+	});
 
-  afterAll(async () => {
-    await worker.stop();
-  });
+	it("should proxy requests and store data in R2", async () => {
+		// Call the proxy's handleRequest function with a mock request
+		const request = new Request("https://example.com/test", {
+			method: "POST",
+			headers: { Authorization: "dummy-token" },
+			body: JSON.stringify({ test: true })
+		});
+		const response = await handleRequest(request);
 
-  describe("handleRequest", () => {
-    it("should return a response with status 404 if OAI-ProxyURL is not found", async () => {
-      await OAI_KV.put("OAI-ProxyKey", "fake-key");
+		// Check that the response has the expected status and body
+		expect(response.status).toEqual(200);
+		expect(await response.text()).toEqual('{"success":true}');
 
-      const resp = await worker.fetch("/", {
-        method: "POST",
-        body: "some-body",
-      });
-      expect(resp.status).toBe(404);
-      const text = await resp.text();
-      expect(text).toBe("Proxy URL not found");
-    });
-
-    it("should return a response with status 404 if OAI-ProxyKey is not found", async () => {
-      await OAI_KV.put("OAI-ProxyURL", "https://fake-proxy-url.com");
-
-      const resp = await worker.fetch("/", {
-        method: "POST",
-        body: "some-body",
-      });
-      expect(resp.status).toBe(404);
-      const text = await resp.text();
-      expect(text).toBe("OpenAI Token not found");
-    });
-
-    it("should proxy the request to the given URL with the correct method, headers, and body", async () => {
-      await OAI_KV.put("OAI-ProxyURL", "https://fake-proxy-url.com");
-      await OAI_KV.put("OAI-ProxyKey", "fake-key");
-
-      const proxiedUrl = "https://fake-proxied-url.com";
-      const proxiedMethod = "POST";
-      const proxiedHeaders = {
-        Authorization: "fake-key",
-        "Content-Type": "application/json",
-      };
-      const proxiedBody = "some-body";
-
-      const proxiedRequest = new Request(proxiedUrl, {
-        method: proxiedMethod,
-        headers: proxiedHeaders,
-        body: proxiedBody,
-      });
-
-      const fetchSpy = jest.spyOn(global, "fetch");
-      fetchSpy.mockResolvedValueOnce(new Response("proxied-response"));
-
-      const resp = await worker.fetch("/", {
-        method: proxiedMethod,
-        body: proxiedBody,
-      });
-      expect(resp.status).toBe(200);
-      const text = await resp.text();
-      expect(text).toBe("proxied-response");
-
-      expect(fetchSpy).toHaveBeenCalledTimes(1);
-      const fetchCall = fetchSpy.mock.calls[0];
-      expect(fetchCall[0].url).toBe(proxiedUrl);
-      expect(fetchCall[0].method).toBe(proxiedMethod);
-      expect(fetchCall[0].headers.get("Authorization")).toBe(
-        proxiedHeaders.Authorization
-      );
-      expect(fetchCall[0].headers.get("Content-Type")).toBe(
-        proxiedHeaders["Content-Type"]
-      );
-      expect(await fetchCall[0].text()).toBe(proxiedBody);
-    });
-  });
+		// Check that the R2 library was called with the expected data
+		expect(mockR2.put).toHaveBeenCalledTimes(1);
+		expect(mockR2.put).toHaveBeenCalledWith(
+			JSON.stringify({
+				originalRequestData: {
+					method: "POST",
+					url: "https://example.com/test",
+					headers: { Authorization: "dummy-token" }
+				},
+				proxiedRequestData: {
+					method: "POST",
+					url: "https://api.openai.com/test",
+					headers: {
+						Authorization: "dummy-token",
+						"Content-Type": "application/json"
+					},
+					body: { test: true }
+				},
+				proxiedResponseData: {
+					status: 200,
+					statusText: "OK",
+					headers: { "Content-Type": "application/json" },
+					body: '{"success":true}'
+				}
+			})
+		);
+	});
 });

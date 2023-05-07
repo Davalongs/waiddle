@@ -1,43 +1,102 @@
-# OpenAI API Usage
+# AERIAL - Cloudflare Worker Reverse Proxy with R2 Storage <!-- omit from toc -->
+ 
+- [Introduction](#introduction)
+- [Features](#features)
+- [Usage](#usage)
+- [Example](#example)
+- [OpenAI API Usage](#openai-api-usage)
+  - [API common parameters](#api-common-parameters)
+- [Future Improvements](#future-improvements)
+- [Contributing](#contributing)
+- [License](#license)
 
-## Standard OpenAPI Chat Completion
 
-Making a POST request to OpenAI API /chat/completion endpoint with the following body:
+# Introduction 
+AERIAL is a serverless reverse proxy service built using Cloudflare Workers that proxies incoming requests to a specified target API endpoint. AERIAL also stores all data that passes through the proxy in a Cloudflare R2 instance for future analytics and debugging purposes.
 
-{
+# Features
+
+*   Reverse proxy for requests to a target API endpoint.
+*   Stores all data passing through the proxy in a Cloudflare R2 instance for future analytics.
+*   Deployed as a Cloudflare Worker for serverless, scalable and fast performance.
+
+# Usage
+
+1.  Clone the repository and install the dependencies.
+
+```bash
+git clone https://github.com/<username>/aerial.git cd aerial npm install
+```
+
+2.  Modify the `wrangler.toml` file to include your Cloudflare account ID and zone ID. You can also set a custom name for the worker.
+
+
+```toml
+name = "worker_name_here"
+account_id = "<your-account-id>"
+zone_id = "<your-zone-id>"
+```
+
+3.  Modify the `src/index.ts` file to configure your target API endpoint and any required extra headers.
+
+
+```typescript
+const target = 'https://api.example.com'; 
+const headers = {
+    'Content-Type': 'application/json',
+    //... <-- Extra headers here
+};
+```
+
+4.  Deploy the worker using [Wrangler](https://developers.cloudflare.com/workers/tooling/wrangler).
+
+
+
+```bash
+wrangler publish
+```
+
+# Example
+
+A simple example can be run directly form a shell using CURL:
+
+```bash
+curl --request POST \
+  --url http://localhost:8787/v1/chat/completions \
+  --header 'Authorization: Bearer YOUR-OPENAI-API-TOKEN-HERE' \
+  --header 'Content-Type: application/json' \
+  --data '{
   "model": "gpt-3.5-turbo",
-  "messages": [{"role": "Owner", "content": "What is 2+2?"}]
-}
+  "messages": [{"role": "user", "content": "Hello!"}]
+}'
+```
 
-Will give a response containing the completed chat message(s) based on the provided input. The response will have a JSON format and will include the generated text(s) based on the provided input. 
-The structure of the response will include a choices array containing one or more objects with the generated text and some additional metadata.
-
-Note that giving the "Authorization" header with the OpenAI API Token is required.
-
-Here's an example response structure:
-
-``` json
+It will return the response of the OpenAI API, which will be stored along with the rest of the request's data.
+```json
 {
-  "choices": [
-    {
-      "text": " The result of 2+2 is 4.",
-      "index": 0,
-      "logprobs": null,
-      "finish_reason": "stop"
-    }
-  ],
-  "created": 1630632696,
-  "model": "text-davinci-002",
-  "id": "cmpl-abc123"
+	"id": "chatcmpl-7Dbfn7ItIyhvDCMj4EOoan0tnMnuL",
+	"object": "chat.completion",
+	"created": 1683477435,
+	"model": "gpt-3.5-turbo-0301",
+	"usage": {
+		"prompt_tokens": 10,
+		"completion_tokens": 9,
+		"total_tokens": 19
+	},
+	"choices": [
+		{
+			"message": {
+				"role": "assistant",
+				"content": "Hello! How can I assist you today?"
+			},
+			"finish_reason": "stop",
+			"index": 0
+		}
+	]
 }
 ```
 
-The exact content of the generated text will depend on the model and parameters used in the request.
-
-## Errors
-
-* **Status Code 429**: If too many requests are made in a time lapse, last known number was around 50 in less than 1 hour, the API will give a 429 error response
-* **Status Code 400**: If the required parameters are not properly forwarded through the proxy the API will give an error for the missing ones.
+# OpenAI API Usage
 
 ## API common parameters
 
@@ -64,4 +123,17 @@ n: We've set this to 1, which means we only want the API to generate one complet
 
 * **echo**: We've set this to true, which means the prompt will be included in the generated text. This can help ensure that the generated text is directly relevant to the prompt.
 
-## ChatGPT (conversational model)
+
+# Future Improvements
+
+*   Add support for caching responses from the target API endpoint ***(Not sure yet)***
+*   Allow for more flexible and customizable data storage in the R2 instance.
+*   Add support for rate limiting and throttling incoming requests.
+
+# Contributing
+
+Contributions are welcome! Please fork the repository and create a pull request with any changes or improvements you would like to make.
+
+# License
+
+AERIAL is licensed under the MIT license. See the [LICENSE](https://github.com/%3Cusername%3E/aerial/blob/main/LICENSE) file for details.
