@@ -1,4 +1,4 @@
-# AERIAL - Cloudflare Worker Reverse Proxy with R2 Storage <!-- omit from toc -->
+# Observer - Cloudflare Worker Reverse Proxy with R2 Storage <!-- omit from toc -->
  
 - [Introduction](#introduction)
 - [Features](#features)
@@ -12,7 +12,7 @@
 
 
 # Introduction 
-AERIAL is a serverless reverse proxy service built using Cloudflare Workers that proxies incoming requests to a specified target API endpoint. AERIAL also stores all data that passes through the proxy in a Cloudflare R2 instance for future analytics and debugging purposes.
+Observer is a serverless reverse proxy service built using Cloudflare Workers that proxies incoming requests to a specified target API endpoint. Observer also stores all data that passes through the proxy in a Cloudflare R2 instance for future analytics and debugging purposes.
 
 # Features
 
@@ -25,7 +25,7 @@ AERIAL is a serverless reverse proxy service built using Cloudflare Workers that
 1.  Clone the repository and install the dependencies.
 
 ```bash
-git clone https://github.com/<username>/aerial.git cd aerial npm install
+git clone https://github.com/Davalongs/waiddle.git cd waiddle npm install
 ```
 
 2.  Modify the `wrangler.toml` file to include your Cloudflare account ID and zone ID. You can also set a custom name for the worker.
