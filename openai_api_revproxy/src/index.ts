@@ -77,21 +77,22 @@ export async function handleRequest(request: Request) {
 		headers: proxiedResponseData.headers
 	});
 
+	/* 
 	// Store all data in Cloudflare R2 for future analytics
 	await storeDataInR2({
 		originalRequestData,
 		proxiedRequestData,
 		proxiedResponseData
 	});
+	*/
 
 	return response;
 }
-
+/* 
 // Store data in Cloudflare R2 storage instance
 async function storeDataInR2(data: any) {
 	// Use the R2 library to interact with the R2 storage instance
 	const r2 = R2(await R2.getToken());
-
 	// Store the data as a JSON string in R2
 	await r2.put(JSON.stringify(data));
-}
+} */
