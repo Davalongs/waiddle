@@ -2,9 +2,4 @@ name = "api-key"
 main = "src/index.ts"
 compatibility_date = "2023-05-07"
 
-account_id = "d202cb58b7d26995b82058f28c7247fe"
 workers_dev = true
-
-kv_namespaces = [
-    { binding = "apiKey", id = "a24608a5a37d43b8a07377effc1768a5", preview_id = "bb492262ec444de38588e67453076795" }
-]
