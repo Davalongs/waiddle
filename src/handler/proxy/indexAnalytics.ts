@@ -36,7 +36,7 @@ const handleRequest = async (request: Request, env: Env, ctx: ExecutionContext):
     headersExtract[key] = request.headers.get(key);
   }
 
-  console.log("onRequest", request.url, JSON.stringify(headersExtract));
+  //console.log("onRequest", request.url, JSON.stringify(headersExtract));
 
   env.OBSERVER.writeDataPoint({
 	'blobs': [ 

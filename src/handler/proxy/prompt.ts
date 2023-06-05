@@ -92,7 +92,7 @@ export async function extractPrompt(
       const stringPrompt = stringPromptResult.data;
       json["prompt"] = stringPrompt;
       const body = JSON.stringify(json);
-      console.log('body: ', body);
+      //console.log('body: ', body);
       const formattedRequest = updateContentLength(cloneRequest, body);
 
       return {

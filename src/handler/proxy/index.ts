@@ -1,4 +1,6 @@
 import { EventEmitter } from "events";
+import { Context, Hono } from 'hono'
+
 import {
 //  getCachedResponse,
   getCacheSettings,
@@ -553,9 +555,7 @@ export async function processAndLogRequestResponse(
   startTime: Date,
   prompt?: Prompt | ChatPrompt
 ): Promise<Response> {
-  const requestId =
-    request.headers.get("Helicone-Request-Id") ?? crypto.randomUUID();
-  console.log("request id", requestId);
+  const requestId = request.headers.get("Helicone-Request-Id") ?? crypto.randomUUID();
 
   const headers = getHeliconeHeaders(request.headers);
 
@@ -574,6 +574,7 @@ export async function processAndLogRequestResponse(
           );
         if (userIdError !== null) {
           console.error(userIdError);
+          Cambio tonto para que reinicie el observer
         } else {
           console.log("helicone user id", heliconeUserId);
           await ensureApiKeyAddedToAccount(
@@ -602,7 +603,7 @@ export async function processAndLogRequestResponse(
       const responseStatus = response.status;
       const [wasTimeout, responseText] = await handleResponseTimeout();
 
-      console.log("hola!!!!!!", requestResult, requestResult.data, responseText);
+
       if (requestResult !== null) {
         const responseResult = await readAndLogResponse({
           requestSettings,
@@ -615,7 +616,7 @@ export async function processAndLogRequestResponse(
           wasTimeout,
         });
 
-        console.log('responseResult....', JSON.stringify(responseResult.data));
+        // console.log('responseResult....', JSON.stringify(responseResult.data));
 
         if (responseResult.data !== null) {
           /*await logInClickhouse(
@@ -632,184 +633,181 @@ export async function processAndLogRequestResponse(
   const responseHeaders = new Headers(response.headers);
   responseHeaders.set("Helicone-Status", "success");
   responseHeaders.set("Helicone-Id", requestId);
-  console.log('response', response);
   return new Response(readable, {
     ...response,
     headers: responseHeaders,
   });
 }
 
-export default {
-  async fetch(
-    request: Request,
-    env: Env,
-    ctx: ExecutionContext
-  ): Promise<Response> {
-    try {
-      if (request.url.includes("audio")) {
-        const url = new URL(request.url);
-        const new_url = new URL(`https://api.openai.com${url.pathname}`);
-        return await fetch(new_url.href, {
-          method: request.method,
-          headers: request.headers,
-          body: request.body,
-        });
-      }
-      if (isLoggingEndpoint(request)) {
-        const response = await handleLoggingEndpoint(request, env);
-        return response;
-      }
-      /*if (isFeedbackEndpoint(request)) {
-        const response = await handleFeedbackEndpoint(request, env);
-        return response;
-      }*/
+async function pooProxy(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext
+): Promise<Response> {
+  try {
+    if (request.url.includes("audio")) {
+      const url = new URL(request.url);
+      const new_url = new URL(`https://api.openai.com${url.pathname}`);
+      return await fetch(new_url.href, {
+        method: request.method,
+        headers: request.headers,
+        body: request.body,
+      });
+    }
+    if (isLoggingEndpoint(request)) {
+      const response = await handleLoggingEndpoint(request, env);
+      return response;
+    }
+    /*if (isFeedbackEndpoint(request)) {
+      const response = await handleFeedbackEndpoint(request, env);
+      return response;
+    }*/
 
-      const rateLimitOptions = getRateLimitOptions(request);
+    const rateLimitOptions = getRateLimitOptions(request);
 
-      const requestBody =
-        request.method === "POST"
-          ? await request.clone().json<{ stream?: boolean; user?: string }>()
-          : {};
+    const requestBody =
+      request.method === "POST"
+        ? await request.clone().json<{ stream?: boolean; user?: string }>()
+        : {};
 
-      const api_base =
-        request.headers.get("Helicone-OpenAI-Api-Base") ?? undefined;
-      if (!validateApiConfiguration(api_base)) {
-        return new Response(`Invalid API base "${api_base}"`, { status: 400 });
-      }
+    const api_base =
+      request.headers.get("Helicone-OpenAI-Api-Base") ?? undefined;
+    if (!validateApiConfiguration(api_base)) {
+      return new Response(`Invalid API base "${api_base}"`, { status: 400 });
+    }
 
-      const requestSettings: RequestSettings = {
-        stream: requestBody.stream ?? false,
-        tokenizer_count_api: env.TOKENIZER_COUNT_API,
-        helicone_api_key: request.headers.get("helicone-auth") ?? undefined,
-        ff_stream_force_format:
-          request.headers.get("helicone-ff-stream-force-format") === "true",
-        ff_increase_timeout:
-          request.headers.get("helicone-ff-increase-timeout") === "true",
-        api_base,
-      };
+    const requestSettings: RequestSettings = {
+      stream: requestBody.stream ?? false,
+      tokenizer_count_api: env.TOKENIZER_COUNT_API,
+      helicone_api_key: request.headers.get("helicone-auth") ?? undefined,
+      ff_stream_force_format:
+        request.headers.get("helicone-ff-stream-force-format") === "true",
+      ff_increase_timeout:
+        request.headers.get("helicone-ff-increase-timeout") === "true",
+      api_base,
+    };
 
-      let additionalHeaders: { [key: string]: string } = {};
-      if (rateLimitOptions !== undefined) {
-        const rateLimitingResult = await handleRateLimiting(
-          requestSettings,
-          request,
-          requestBody,
-          env,
-          ctx,
-          rateLimitOptions,
-          new Date()
-        );
-
-        if (rateLimitingResult.response !== null) {
-          return rateLimitingResult.response;
-        }
-
-        additionalHeaders = rateLimitingResult.additionalHeaders;
-      }
-
-      const retryOptions = getRetryOptions(request);
-
-      const { data: cacheSettings, error: cacheError } = getCacheSettings(
-        request.headers,
-        requestBody.stream ?? false
-      );
-
-      if (cacheError !== null) {
-        return new Response(cacheError, { status: 400 });
-      }
-
-      if (cacheSettings.shouldReadFromCache || false ) {
-        /*const cachedResponse = await getCachedResponse(
-          request.clone(),
-          cacheSettings.bucketSettings,
-          env
-        );
-        if (cachedResponse) {
-          ctx.waitUntil(recordCacheHit(cachedResponse.headers, env));
-          return cachedResponse;
-        }*/
-      }
-
-      const requestClone = cacheSettings.shouldSaveToCache
-        ? request.clone()
-        : null;
-
-      const response = await uncachedRequest(
+    let additionalHeaders: { [key: string]: string } = {};
+    if (rateLimitOptions !== undefined) {
+      const rateLimitingResult = await handleRateLimiting(
+        requestSettings,
         request,
+        requestBody,
         env,
         ctx,
-        requestSettings,
-        retryOptions
+        rateLimitOptions,
+        new Date()
       );
 
-      if (cacheSettings.shouldSaveToCache && requestClone && response.status == 200) {
-        console.log("shouldSaveToCache", JSON.stringify(response));
- /*
-        ctx.waitUntil(
-         saveToCache(
-            requestClone,
-            response,
-            cacheSettings.cacheControl,
-            cacheSettings.bucketSettings,
-            env,
-            cacheSettings.ttl
-          )
-        );
-        */
+      if (rateLimitingResult.response !== null) {
+        return rateLimitingResult.response;
       }
-      const responseHeaders = new Headers(response.headers);
-      if (cacheSettings.shouldReadFromCache) {
-        responseHeaders.append("Helicone-Cache", "MISS");
-      }
-      Object.entries(additionalHeaders).forEach(([key, value]) => {
-        responseHeaders.append(key, value);
-      });
 
-      if (rateLimitOptions !== undefined) {
-        const auth = request.headers.get("Authorization");
+      additionalHeaders = rateLimitingResult.additionalHeaders;
+    }
 
-        if (auth === null) {
-          return new Response("No authorization header found!", {
-            status: 401,
-          });
-        }
-        const hashedKey = await hash(auth);
-        updateRateLimitCounter(
-          request,
+    const retryOptions = getRetryOptions(request);
+
+    const { data: cacheSettings, error: cacheError } = getCacheSettings(
+      request.headers,
+      requestBody.stream ?? false
+    );
+
+    if (cacheError !== null) {
+      return new Response(cacheError, { status: 400 });
+    }
+
+    if (cacheSettings.shouldReadFromCache || false ) {
+      /*const cachedResponse = await getCachedResponse(
+        request.clone(),
+        cacheSettings.bucketSettings,
+        env
+      );
+      if (cachedResponse) {
+        ctx.waitUntil(recordCacheHit(cachedResponse.headers, env));
+        return cachedResponse;
+      }*/
+    }
+
+    const requestClone = cacheSettings.shouldSaveToCache
+      ? request.clone()
+      : null;
+
+    const response = await uncachedRequest(
+      request,
+      env,
+      ctx,
+      requestSettings,
+      retryOptions
+    );
+
+    if (cacheSettings.shouldSaveToCache && requestClone && response.status == 200) {
+/*
+      ctx.waitUntil(
+        saveToCache(
+          requestClone,
+          response,
+          cacheSettings.cacheControl,
+          cacheSettings.bucketSettings,
           env,
-          rateLimitOptions,
-          hashedKey,
-          requestBody.user
-        );
-      }
+          cacheSettings.ttl
+        )
+      );
+      */
+    }
+    const responseHeaders = new Headers(response.headers);
+    if (cacheSettings.shouldReadFromCache) {
+      responseHeaders.append("Helicone-Cache", "MISS");
+    }
+    Object.entries(additionalHeaders).forEach(([key, value]) => {
+      responseHeaders.append(key, value);
+    });
 
-        console.log('response!!!', JSON.stringify(response));
-      return new Response(response.body, {
-        ...response,
-        status: response.status,
-        headers: responseHeaders,
-      });
-    } catch (e) {
-      console.error(e);
-      return new Response(
-        JSON.stringify({
-          "helicone-message":
-            "Helicone ran into an error servicing your request: " + e,
-          support:
-            "Please reach out on our discord or email us at help@helicone.ai, we'd love to help!",
-          "helicone-error": JSON.stringify(e),
-        }),
-        {
-          status: 500,
-          headers: {
-            "content-type": "application/json;charset=UTF-8",
-            "helicone-error": "true",
-          },
-        }
+    if (rateLimitOptions !== undefined) {
+      const auth = request.headers.get("Authorization");
+
+      if (auth === null) {
+        return new Response("No authorization header found!", {
+          status: 401,
+        });
+      }
+      const hashedKey = await hash(auth);
+      updateRateLimitCounter(
+        request,
+        env,
+        rateLimitOptions,
+        hashedKey,
+        requestBody.user
       );
     }
-  },
-};
+
+    // console.log('response!!!', JSON.stringify(response));
+    return new Response(response.body, {
+      ...response,
+      status: response.status,
+      headers: responseHeaders,
+    });
+  } catch (e) {
+    console.error(e);
+    return new Response(
+      JSON.stringify({
+        "helicone-message":
+          "Helicone ran into an error servicing your request: " + e,
+        support:
+          "Please reach out on our discord or email us at help@helicone.ai, we'd love to help!",
+        "helicone-error": JSON.stringify(e),
+      }),
+      {
+        status: 500,
+        headers: {
+          "content-type": "application/json;charset=UTF-8",
+          "helicone-error": "true",
+        },
+      }
+    );
+  }
+}
+
 
 export async function uncachedRequest(
   request: Request,
@@ -819,11 +817,9 @@ export async function uncachedRequest(
   retryOptions?: RetryOptions
 ): Promise<Response> {
   const result = await extractPrompt(request);
-  console.log('result', JSON.stringify(result));
 
   if (result.data !== null) {
     const { request: formattedRequest, body: body, prompt } = result.data;
-    console.log('formattedRequest', formattedRequest);
     return await forwardAndLog(
       requestSettings,
       body,
@@ -837,3 +833,13 @@ export async function uncachedRequest(
     return new Response(result.error, { status: 400 });
   }
 }
+
+const Proxy = new Hono()
+
+Proxy.all("/", proxy)
+
+async function proxy(c:Context) {
+  return pooProxy(c.req.raw, c.env, c.executionCtx)
+}
+
+export default Proxy

@@ -1,5 +1,7 @@
 name = "api-key"
 main = "src/index.ts"
 compatibility_date = "2023-05-07"
+logpush = true
+node_compat = true
 
 workers_dev = true

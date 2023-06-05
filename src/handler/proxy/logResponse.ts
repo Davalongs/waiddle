@@ -62,7 +62,7 @@ function getResponseText(responseBody: any): string {
       })
       .join("");
 
-      console.log("finalRet", finalRet);
+      //console.log("finalRet", finalRet);
     return finalRet;
   } else {
     throw new Error(`Invalid response body:\n${JSON.stringify(responseBody)}`);
@@ -177,7 +177,7 @@ async function parseResponse(
   requestBody: any
 ): Promise<Result<any, string>> {
   const result = responseBody;
-  console.log("parseResponse!!!!", result);
+  //console.log("parseResponse!!!!", result);
   try {
     if (!requestSettings.stream || responseStatus !== 200) {
       return {
@@ -247,7 +247,7 @@ export async function readAndLogResponse(
     responseStatus,
   } = responseLog;
 
-  console.log("readAndLogResponse!!!!", responseLog);
+  //console.log("readAndLogResponse!!!!", responseLog);
   //const initialResponse =await initialResponseLog(responseLog);
 
   /*if (initialResponse.error !== null) {
@@ -261,7 +261,7 @@ export async function readAndLogResponse(
     requestBody
   );
 
-  console.log("parsedResponse!!!!", parsedResponse);
+  //console.log("parsedResponse!!!!", parsedResponse);
 
   if (parsedResponse.error === null) {
    /* return mapPostgrestErr(
