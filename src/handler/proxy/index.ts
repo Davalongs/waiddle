@@ -30,11 +30,12 @@ async function proxy(c:Context) {
 
   // let [toResponse, toLog] = readable.tee()
 
-    // ... and deliver our Response while that’s running.
-  const response = new Response(readable, forwardedResponse);
+  
   logChunks(forwardedResponse2log)
 
-  return response
+  // ... and deliver our Response while that’s running.
+  return new Response(readable, forwardedResponse);
+
 }
 
 async function logChunks(response: Response): Promise<void> {
@@ -43,6 +44,7 @@ async function logChunks(response: Response): Promise<void> {
   }
   try {
     let bytes = 0
+    let data = ''
     for await (const chunk of response.body) {
       bytes += chunk.length;
       console.log(`Chunk: ${String.fromCharCode(...chunk)}. Read ${bytes} characters.`);
