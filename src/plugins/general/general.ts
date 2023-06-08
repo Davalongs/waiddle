@@ -1,4 +1,4 @@
-import { Plugin } from "../plugin";
+import { Plugin, RequestCallback, ResponseCallback } from "../plugin";
 import { Context } from "hono";
 
 export class GeneralPlugin implements Plugin {
@@ -29,12 +29,18 @@ export class GeneralPlugin implements Plugin {
     return '';
   }
 
-  public preRequest(c: Context): void {
-    console.log("The pre request")
+  public preRequest(c: Context): RequestCallback {
+    return function(request: Request, url: string): Request {
+        console.log("The pre request")
+        return new Request(url, request)
+    }
   }
 
-  public async postResponse(c: Context, response: Response): Promise<void> {
-    console.log("The post request")
+  public postResponse(c: Context): ResponseCallback {
+    return function(response: Response, url: string): Response {
+        console.log("The post response")
+        return response
+    }
   }
 }
 
