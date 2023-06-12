@@ -1,5 +1,6 @@
 import { BasePlugin } from "../plugin";
 import { Context } from "hono";
+import { BaseStreamProcessor, StreamProcessor } from "../streamProcessor";
 
 export class OpenAIPlugin extends BasePlugin {
   protected _name = 'OpenAI';
@@ -17,4 +18,3 @@ export class OpenAIPlugin extends BasePlugin {
     return 'https';
   }
 }
-
