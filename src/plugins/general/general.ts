@@ -1,22 +1,12 @@
-import { Plugin, RequestCallback, ResponseCallback } from "../plugin";
+import { BasePlugin } from "../plugin";
 import { Context } from "hono";
 
-export class GeneralPlugin implements Plugin {
-  protected static _name = 'General';
-  protected static _description = 'A basic plugin to have observability over any api key';
-
-  private c: Context
+export class GeneralPlugin extends BasePlugin {
+  protected _name = 'General';
+  protected _description = 'A basic plugin to have observability over any api key';
 
   constructor(c: Context) {
-    this.c = c
-  }
-
-  public name(): string {
-    return GeneralPlugin._name;
-  }
-
-  public description(): string {
-    return GeneralPlugin._description;
+    super(c)
   }
 
   public forwardHost(): string {
@@ -26,21 +16,7 @@ export class GeneralPlugin implements Plugin {
 
   public forwardProtocol(): string {
     // TODO: Define the URI (with protocol) with a token parameter and split protocol here
-    return '';
-  }
-
-  public preRequest(c: Context): RequestCallback {
-    return function(request: Request, url: string): Request {
-        console.log("The pre request")
-        return new Request(url, request)
-    }
-  }
-
-  public postResponse(c: Context): ResponseCallback {
-    return function(response: Response, url: string): Response {
-        console.log("The post response")
-        return response
-    }
+    return 'https';
   }
 }
 
