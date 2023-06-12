@@ -17,4 +17,18 @@ export class OpenAIPlugin extends BasePlugin {
   public forwardProtocol(): string {
     return 'https';
   }
+
+  public newStreamProcessor(): StreamProcessor {
+    return new OpenAIStreamProcessor(this.c)
+  }
+}
+
+class OpenAIStreamProcessor extends BaseStreamProcessor {
+  constructor(c: Context) {
+    super(c)
+  }
+
+  protected async transformChunk(chunk: Uint8Array): Promise<Uint8Array> {
+    return chunk
+  } 
 }
